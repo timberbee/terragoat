@@ -1,19 +1,44 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- master
+  paths:
+    include:
+      - terraform/*
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.8'
+  displayName: 'Install Python 3.8'
+- task: TerraformInstaller@0
+  inputs:
+    terraformVersion: 'v0.12.28'
+  displayName: 'Install Terraform'
+- task: TerraformCLI@0
+  inputs:
+    command: 'init'
+    workingDirectory: 'terraform'
+    backendType: 'azurerm'
+    backendServiceArm: '...'
+    backendAzureRmResourceGroupName: '...'
+    backendAzureRmStorageAccountName: '...'
+    backendAzureRmContainerName: '...'
+    backendAzureRmKey: '...'
+  displayName: 'terraform init'
+- task: TerraformCLI@0
+  inputs:
+    command: 'validate'
+    provider: 'azurerm'
+    workingDirectory: 'terraform'
+  displayName: 'terraform validate'
+- script: pip install bridgecrew
+  displayName: 'Install the Bridgecrew CLI'
+- script: bridgecrew -d terraform --bc-api-key abcd1234 --repo-id my_org/my_repo --branch master
+  displayName: 'Scan with Bridgecrew'
+- task: TerraformCLI@0
+  inputs:
+    command: 'apply'
+    workingDirectory: 'terraform'
+    environmentServiceName: '...'
+  displayName: 'terraform apply'
